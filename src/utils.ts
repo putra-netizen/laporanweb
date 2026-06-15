@@ -11,6 +11,7 @@ import { OrderData, ShopeeTransaction, WorkerPerformance, MonthlyTrendData } fro
 // - VITE_SHEETS_SOURCE_2: Tautan untuk Sumber Laporan 2
 export const PERMANENT_SHEETS_SOURCE_1 = (import.meta as any).env?.VITE_SHEETS_SOURCE_1 || "https://docs.google.com/spreadsheets/d/e/2PACX-1vT3jY16vyl34OXgongBsct6Agb6S3PstBMiZnzjXogwIZsMTcxmUMQ8yrVwkG_0bVOUqhsK6ebhe1Oj/pub?gid=0&single=true&output=csv";
 export const PERMANENT_SHEETS_SOURCE_2 = (import.meta as any).env?.VITE_SHEETS_SOURCE_2 || "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH2r59Rn5uSaa-_kOuP6m65O4gRlHneYI90mHN0SFecSWtcIY2HZHURWhK0eb8WtRRhwuJYtIXsCU7/pub?gid=0&single=true&output=csv";
+export const PERMANENT_SHOPEE_SOURCE = (import.meta as any).env?.VITE_SHOPEE_SOURCE || "https://docs.google.com/spreadsheets/d/1jZO0d0B_BySkmQcZcN-XEzlFQkAIaBmu_4mdklQ7-aM/edit?usp=sharing";
 
 // Default rate per order is Rp 500
 export const DEFAULT_RATE = 500;
@@ -134,14 +135,54 @@ export function parseShopeeCSV(csvText: string): ShopeeTransaction[] {
   const lines = csvText.split(/\r?\n/);
   const results: ShopeeTransaction[] = [];
   let headerIndex = -1;
+  let delimiter = ";";
 
-  // Find actual transaction table header
+  // Find actual transaction table header or default to first line if not explicitly found
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    if (line.toLowerCase().includes("tanggal transaksi")) {
+    if (line.toLowerCase().includes("tanggal") || line.toLowerCase().includes("tipe transaksi") || line.toLowerCase().includes("no. pesanan") || line.toLowerCase().includes("jenis transaksi") || line.toLowerCase().includes("jumlah")) {
       headerIndex = i;
+      // Detect delimiter based on character counts
+      const commaCount = (line.match(/,/g) || []).length;
+      const semiCount = (line.match(/;/g) || []).length;
+      delimiter = commaCount > semiCount ? "," : ";";
       break;
     }
+  }
+
+  // If no header found, assume row 0 as header
+  if (headerIndex === -1 && lines.length > 0) {
+    headerIndex = 0;
+    const line = lines[0];
+    const commaCount = (line.match(/,/g) || []).length;
+    const semiCount = (line.match(/;/g) || []).length;
+    delimiter = commaCount > semiCount ? "," : ";";
+  }
+
+  const headerLine = headerIndex !== -1 ? lines[headerIndex] : "";
+  const headers = headerLine ? headerLine.split(delimiter).map(h => h.trim().toLowerCase().replace(/^"|"$/g, "")) : [];
+
+  // Default indices if headers are missing or not matching
+  let tglIdx = 0;
+  let tipeIdx = 1;
+  let deskIdx = 2;
+  let noPesIdx = 3;
+  let jenisIdx = 4;
+  let jmlIdx = 5;
+  let statusIdx = 6;
+  let saldoIdx = 7;
+
+  if (headers.length > 0) {
+    headers.forEach((h, idx) => {
+      if (h.includes("tanggal") || h.includes("date") || h === "waktu") tglIdx = idx;
+      else if (h.includes("tipe") || h === "type") tipeIdx = idx;
+      else if (h.includes("deskripsi") || h.includes("description") || h.includes("detail") || h.includes("rincian")) deskIdx = idx;
+      else if (h.includes("pesanan") || h.includes("order")) noPesIdx = idx;
+      else if (h.includes("jenis") || h.includes("flow")) jenisIdx = idx;
+      else if (h.includes("jumlah") || h.includes("amount") || h.includes("nilai") || h.includes("total")) jmlIdx = idx;
+      else if (h.includes("status")) statusIdx = idx;
+      else if (h.includes("saldo") || h.includes("balance")) saldoIdx = idx;
+    });
   }
 
   const startIdx = headerIndex !== -1 ? headerIndex + 1 : 0;
@@ -150,26 +191,38 @@ export function parseShopeeCSV(csvText: string): ShopeeTransaction[] {
     const line = lines[i].trim();
     if (!line) continue;
 
-    // Split using semicolon (;) which is standard for Shopee Indonesian financial logs
-    const columns = line.split(";").map(c => c.trim().replace(/^"|"$/g, ""));
-    if (columns.length < 4) continue;
+    // Use parseCsvLine if delimiter is comma, otherwise split by semicolon
+    let columns: string[] = [];
+    if (delimiter === ",") {
+      columns = parseCsvLine(line);
+    } else {
+      columns = line.split(";").map(c => c.trim().replace(/^"|"$/g, ""));
+    }
 
-    const tgl = columns[0] || "";
-    // Ensure date looks somewhat correct (starts with numeric or includes separators)
-    if (!tgl || (!tgl.includes("-") && !tgl.includes("/"))) {
+    if (columns.length <= Math.max(tglIdx, tipeIdx)) continue;
+
+    const tgl = columns[tglIdx] || "";
+    // Skip formatting, metadata or blank spacer lines in CSV
+    if (!tgl || (!tgl.includes("-") && !tgl.includes("/")) || tgl.toLowerCase().includes("tanggal") || tgl.toLowerCase().includes("laporan")) {
       continue;
     }
 
-    const tipe = columns[1] || "";
-    const deskripsi = columns[2] || "";
-    const noPesanan = columns[3] || "";
-    const jenis = columns[4] || "";
-    const jumlahRaw = columns[5] || "0";
-    const status = columns[6] || "";
-    const saldoRaw = columns[7] || "0";
+    const tipe = columns[tipeIdx] || "Omset";
+    const deskripsi = columns[deskIdx] || "Pemasukan Shopee (Omset)";
+    const noPesanan = columns[noPesIdx] || "-";
+    const jenis = columns[jenisIdx] || "Transaksi Masuk";
+    const jumlahRaw = columns[jmlIdx] || "0";
+    const status = columns[statusIdx] || "Transaksi Selesai";
+    const saldoRaw = columns[saldoIdx] || "0";
 
-    // parse numeric amounts safely
-    const jumlah = parseInt(jumlahRaw.replace(/[^0-9-]/g, "")) || 0;
+    // Parse numeric amounts safely
+    let jumlah = parseInt(jumlahRaw.replace(/[^0-9-]/g, "")) || 0;
+    
+    // Auto-resolve signs based on jenisTransaksi if amount is positive but it is Outgoing (Keluar) e.g., Penarikan Dana
+    if ((jenis.toLowerCase().includes("keluar") || tipe.toLowerCase().includes("penarikan") || deskripsi.toLowerCase().includes("penarikan")) && jumlah > 0) {
+      jumlah = -jumlah;
+    }
+
     const saldoAkhir = parseInt(saldoRaw.replace(/[^0-9-]/g, "")) || 0;
 
     results.push({

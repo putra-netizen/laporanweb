@@ -15,7 +15,8 @@ import {
   X,
   CreditCard,
   XCircle,
-  FileCheck
+  FileCheck,
+  RefreshCw
 } from "lucide-react";
 
 interface ShopeeTableProps {
@@ -24,6 +25,8 @@ interface ShopeeTableProps {
   onUpdateTransaction: (tx: ShopeeTransaction) => void;
   onDeleteTransaction: (id: string) => void;
   onExportShopeeCSV: () => void;
+  onSyncGoogleSheets?: () => void;
+  isSyncing?: boolean;
 }
 
 export default function ShopeeTable({
@@ -32,6 +35,8 @@ export default function ShopeeTable({
   onUpdateTransaction,
   onDeleteTransaction,
   onExportShopeeCSV,
+  onSyncGoogleSheets,
+  isSyncing = false,
 }: ShopeeTableProps) {
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState("");
@@ -204,6 +209,16 @@ export default function ShopeeTable({
 
           {/* Action Row Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            {onSyncGoogleSheets && (
+              <button
+                onClick={onSyncGoogleSheets}
+                disabled={isSyncing}
+                className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 hover:border-amber-300 disabled:opacity-50 font-extrabold rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-3xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-amber-600" : "text-amber-700"}`} />
+                <span>{isSyncing ? "Menyinkronkan..." : "Tarik Google Sheet"}</span>
+              </button>
+            )}
             <button
               onClick={onExportShopeeCSV}
               className="px-3.5 py-1.5 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-900 bg-slate-50 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer"

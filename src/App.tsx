@@ -14,6 +14,7 @@ import {
   fetchSpreadsheetText,
   PERMANENT_SHEETS_SOURCE_1,
   PERMANENT_SHEETS_SOURCE_2,
+  PERMANENT_SHOPEE_SOURCE,
 } from "./utils";
 import DashboardStats from "./components/DashboardStats";
 import PerformanceChart from "./components/PerformanceChart";
@@ -48,6 +49,7 @@ export default function App() {
   
   // Realtime active indicators
   const [isRealtimeSyncing, setIsRealtimeSyncing] = useState<boolean>(false);
+  const [isSyncingShopee, setIsSyncingShopee] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>(localStorage.getItem("google_sheets_last_sync") || "");
 
   // Load initial data on mount
@@ -131,6 +133,25 @@ export default function App() {
     }
 
     setShopeeTransactions(initialList);
+
+    // Auto-sync Shopee financial data on initial startup
+    const syncShopeeOnMount = async () => {
+      try {
+        const parseResult = getGoogleSheetsCsvUrl(PERMANENT_SHOPEE_SOURCE);
+        const fetchUrl = parseResult ? parseResult.csvUrl : PERMANENT_SHOPEE_SOURCE;
+        const text = await fetchSpreadsheetText(fetchUrl, "Shopee Startup Load");
+        if (text && text.trim().length > 0) {
+          const parsed = parseShopeeCSV(text);
+          if (parsed && parsed.length > 0) {
+            setShopeeTransactions(parsed);
+            localStorage.setItem("shopee_dashboard_data", JSON.stringify(parsed));
+          }
+        }
+      } catch (err) {
+        console.warn("Muted initial Shopee sync error:", err);
+      }
+    };
+    syncShopeeOnMount();
   }, []);
 
   const triggerAlert = (type: "success" | "info" | "error", message: string) => {
@@ -699,6 +720,35 @@ export default function App() {
     localStorage.setItem("shopee_dashboard_data", JSON.stringify(finalData));
   };
 
+  const handleSyncShopeeFromSheet = async () => {
+    if (isSyncingShopee) return;
+    setIsSyncingShopee(true);
+    triggerAlert("info", "Mencoba menyinkronkan rincian keuangan Shopee dari Google Sheets...");
+
+    try {
+      const parseResult = getGoogleSheetsCsvUrl(PERMANENT_SHOPEE_SOURCE);
+      const fetchUrl = parseResult ? parseResult.csvUrl : PERMANENT_SHOPEE_SOURCE;
+      const text = await fetchSpreadsheetText(fetchUrl, "Shopee Spreadsheet Manual Sync");
+      if (!text || text.trim().length === 0) {
+        throw new Error("Respon kosong diterima dari tautan Google Sheets.");
+      }
+
+      const parsed = parseShopeeCSV(text);
+      if (parsed.length === 0) {
+        throw new Error("Tidak ada baris data transaksi Shopee valid yang terdeteksi di Google Sheet Anda.");
+      }
+
+      setShopeeTransactions(parsed);
+      localStorage.setItem("shopee_dashboard_data", JSON.stringify(parsed));
+      triggerAlert("success", `Sinkronisasi sukses! Berhasil memuat ${parsed.length} transaksi Shopee terbaru.`);
+    } catch (err: any) {
+      console.error(err);
+      triggerAlert("error", `Gagal sinkronisasi Shopee: ${err.message || "Kesalahan koneksi"}`);
+    } finally {
+      setIsSyncingShopee(false);
+    }
+  };
+
   // Reset/Clear everything
   const handleResetToDefault = () => {
     if (confirm("Apakah Anda yakin ingin mematikan filter & reset seluruh data ke data bawaan contoh?")) {
@@ -1046,6 +1096,8 @@ export default function App() {
               onUpdateTransaction={handleUpdateShopeeTransaction}
               onDeleteTransaction={handleDeleteShopeeTransaction}
               onExportShopeeCSV={handleExportShopeeCSV}
+              onSyncGoogleSheets={handleSyncShopeeFromSheet}
+              isSyncing={isSyncingShopee}
             />
           )}
 
