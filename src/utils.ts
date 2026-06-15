@@ -1,5 +1,17 @@
 import { OrderData, ShopeeTransaction, WorkerPerformance, MonthlyTrendData } from "./types";
 
+// ==========================================
+// 🔴 KONFIGURASI PERMANEN GOOGLE SPREADSHEET 🔴
+// ==========================================
+// Silakan isi / ganti URL di bawah ini dengan tautan Google Sheets Anda yang sebenarnya.
+// Setelah diisi, aplikasi akan selalu otomatis terhubung ke spreadsheet ini tanpa perlu di-input ulang.
+//
+// Anda juga bisa mengaturnya lewat Environment Variables di Vercel atau hosting lainnya:
+// - VITE_SHEETS_SOURCE_1: Tautan untuk Sumber Laporan 1
+// - VITE_SHEETS_SOURCE_2: Tautan untuk Sumber Laporan 2
+export const PERMANENT_SHEETS_SOURCE_1 = (import.meta as any).env?.VITE_SHEETS_SOURCE_1 || "https://docs.google.com/spreadsheets/d/1XyqyO0K7Plo8d8t8K9YV-V_1XyqwepW-M_XzY-aBcDe/edit";
+export const PERMANENT_SHEETS_SOURCE_2 = (import.meta as any).env?.VITE_SHEETS_SOURCE_2 || "";
+
 // Default rate per order is Rp 500
 export const DEFAULT_RATE = 500;
 

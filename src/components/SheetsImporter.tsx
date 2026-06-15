@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { OrderData } from "../types";
-import { getGoogleSheetsCsvUrl, parseCsvLine, formatRupiah, generateId, DEFAULT_RATE, fetchSpreadsheetText } from "../utils";
+import { getGoogleSheetsCsvUrl, parseCsvLine, formatRupiah, generateId, DEFAULT_RATE, fetchSpreadsheetText, PERMANENT_SHEETS_SOURCE_1, PERMANENT_SHEETS_SOURCE_2 } from "../utils";
 import {
   FileSpreadsheet,
   Link2,
@@ -76,12 +76,12 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
   const [globalAutoSync, setGlobalAutoSync] = useState(true);
   const [globalImportAction, setGlobalImportAction] = useState<"merge" | "overwrite">("merge");
   
-  // Overall state for both Google Sheets sources
+  // Overall state for both Google Sheets sources, pre-seeded with PERMANENT URLs when available
   const [sources, setSources] = useState<SheetSource[]>([
     {
       id: "source_1",
       name: "Sumber Laporan 1",
-      url: "",
+      url: PERMANENT_SHEETS_SOURCE_1,
       spreadsheetId: "",
       gid: "0",
       isConnected: false,
@@ -96,7 +96,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
     {
       id: "source_2",
       name: "Sumber Laporan 2",
-      url: "",
+      url: PERMANENT_SHEETS_SOURCE_2,
       spreadsheetId: "",
       gid: "0",
       isConnected: false,
@@ -113,7 +113,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Load multisource configuration on mount
+  // Load multisource configuration on mount and run silent background auto-connect if needed
   useEffect(() => {
     const savedConfig = localStorage.getItem("google_sheets_multisource_config");
     const savedGlobalAutoSync = localStorage.getItem("google_sheets_global_autosync");
@@ -126,28 +126,171 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
       setGlobalImportAction(savedGlobalImportAction as "merge" | "overwrite");
     }
 
+    let initialSources: SheetSource[] = [
+      {
+        id: "source_1",
+        name: "Sumber Laporan 1",
+        url: PERMANENT_SHEETS_SOURCE_1,
+        spreadsheetId: "",
+        gid: "0",
+        isConnected: false,
+        headers: [],
+        rawRows: [],
+        lastSyncTime: null,
+        errorMsg: "",
+        successMsg: "",
+        rate: 500,
+        mappings: { ...DEFAULT_MAPPINGS }
+      },
+      {
+        id: "source_2",
+        name: "Sumber Laporan 2",
+        url: PERMANENT_SHEETS_SOURCE_2,
+        spreadsheetId: "",
+        gid: "0",
+        isConnected: false,
+        headers: [],
+        rawRows: [],
+        lastSyncTime: null,
+        errorMsg: "",
+        successMsg: "",
+        rate: 500,
+        mappings: { ...DEFAULT_MAPPINGS }
+      }
+    ];
+
     if (savedConfig) {
       try {
         const parsed = JSON.parse(savedConfig);
         if (Array.isArray(parsed) && parsed.length === 2) {
-          // Verify that parsed elements have proper id fields
-          const sanitized = parsed.map((item, idx) => ({
-            ...item,
-            id: idx === 0 ? "source_1" : "source_2",
-            name: item.name || `Sumber Laporan ${idx + 1}`,
-            mappings: item.mappings || { ...DEFAULT_MAPPINGS },
-            headers: item.headers || [],
-            rawRows: item.rawRows || [],
-            rate: item.rate !== undefined ? item.rate : 500,
-            errorMsg: "",
-            successMsg: ""
-          }));
-          setSources(sanitized);
+          initialSources = parsed.map((item, idx) => {
+            const defaultUrl = idx === 0 ? PERMANENT_SHEETS_SOURCE_1 : PERMANENT_SHEETS_SOURCE_2;
+            const finalUrl = (item.url && item.url.trim()) ? item.url : defaultUrl;
+            return {
+              ...item,
+              id: idx === 0 ? "source_1" : "source_2",
+              name: item.name || `Sumber Laporan ${idx + 1}`,
+              url: finalUrl,
+              mappings: item.mappings || { ...DEFAULT_MAPPINGS },
+              headers: item.headers || [],
+              rawRows: item.rawRows || [],
+              rate: item.rate !== undefined ? item.rate : 500,
+              errorMsg: "",
+              successMsg: ""
+            };
+          });
         }
       } catch (e) {
         console.error("Gagal memuat konfigurasi Google Sheets Multi-source:", e);
       }
     }
+
+    setSources(initialSources);
+
+    // Auto-connect disconnected permanent channels on startup silently in the background
+    const autoConnect = async (sourcesToConnect: SheetSource[]) => {
+      let changed = false;
+      const connectedResult = await Promise.all(
+        sourcesToConnect.map(async (src) => {
+          if (src.url && src.url.trim() && !src.isConnected) {
+            const parseResult = getGoogleSheetsCsvUrl(src.url);
+            if (parseResult) {
+              try {
+                const text = await fetchSpreadsheetText(parseResult.csvUrl, src.name);
+                const lines = text.split(/\r?\n/).filter(line => line.trim());
+                if (lines.length > 0) {
+                  const detectedHeaders = parseCsvLine(lines[0]);
+                  const sampleRows: string[][] = [];
+                  for (let i = 1; i < Math.min(lines.length, 11); i++) {
+                    sampleRows.push(parseCsvLine(lines[i]));
+                  }
+
+                  // Auto-align mappings
+                  const newMappings = { ...src.mappings };
+                  const findBestHeaderMatch = (keywords: string[], fieldKey: keyof typeof newMappings, excludeKeywords?: string[]) => {
+                    let found = detectedHeaders.find(header => {
+                      const lHeader = header.toLowerCase().trim();
+                      return keywords.some(keyword => lHeader === keyword.toLowerCase().trim());
+                    });
+                    if (!found) {
+                      found = detectedHeaders.find(header => {
+                        const lHeader = header.toLowerCase().trim();
+                        if (excludeKeywords && excludeKeywords.some(ex => lHeader.includes(ex.toLowerCase().trim()))) {
+                          return false;
+                        }
+                        return keywords.some(keyword => lHeader.includes(keyword.toLowerCase().trim()));
+                      });
+                    }
+                    if (!found) {
+                      found = detectedHeaders.find(header => {
+                        const lHeader = header.toLowerCase().trim();
+                        return keywords.some(keyword => lHeader.includes(keyword.toLowerCase().trim()));
+                      });
+                    }
+                    if (found) {
+                      newMappings[fieldKey] = found;
+                    }
+                  };
+
+                  findBestHeaderMatch(["tanggal", "date", "hari"], "tanggal");
+                  findBestHeaderMatch(["no order", "order id", "kode order", "order_id", "no.order", "no_order"], "noOrder");
+                  findBestHeaderMatch(["nama toko", "toko", "store", "shop"], "namaToko");
+                  findBestHeaderMatch(["nama klien", "nama_klien", "klien", "client"], "namaKlien");
+                  findBestHeaderMatch(["no target", "no_target", "target"], "noTarget");
+                  findBestHeaderMatch(["spam"], "spam");
+                  findBestHeaderMatch(["order", "order count", "jumlah", "qty", "pcs"], "orderCount", ["no order", "no.order", "no_order", "kode", "id", "no"]);
+                  findBestHeaderMatch(["worker", "talent", "nama worker", "name", "nama"], "worker", ["klien", "client", "toko", "store", "shop", "admin", "no", "kode"]);
+                  findBestHeaderMatch(["admin"], "admin");
+                  findBestHeaderMatch(["limit"], "limit");
+                  findBestHeaderMatch(["link bukti", "link_bukti", "bukti", "screenshot"], "linkBukti");
+
+                  changed = true;
+                  return {
+                    ...src,
+                    spreadsheetId: parseResult.spreadsheetId,
+                    gid: parseResult.gid,
+                    isConnected: true,
+                    headers: detectedHeaders,
+                    rawRows: sampleRows,
+                    mappings: newMappings,
+                    successMsg: "Koneksi otomatis latar belakang berhasil!"
+                  };
+                }
+              } catch (e) {
+                console.warn(`[Auto-connect] Gagal menghubungkan ${src.name}:`, e);
+              }
+            }
+          }
+          return src;
+        })
+      );
+
+      if (changed) {
+        setSources(connectedResult);
+        // Save the updated configuration with parsed metadata back to localStorage
+        const persistenceData = connectedResult.map(s => ({
+          id: s.id,
+          name: s.name,
+          url: s.url,
+          spreadsheetId: s.spreadsheetId,
+          gid: s.gid,
+          isConnected: s.isConnected,
+          mappings: s.mappings,
+          headers: s.headers,
+          rawRows: s.rawRows,
+          lastSyncTime: s.lastSyncTime,
+          rate: s.rate !== undefined ? s.rate : 500
+        }));
+        localStorage.setItem("google_sheets_multisource_config", JSON.stringify(persistenceData));
+      }
+    };
+
+    // Run autoConnect slightly after setting state to keep UI snappy
+    const timer = setTimeout(() => {
+      autoConnect(initialSources);
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Save the overall configuration state to localStorage
