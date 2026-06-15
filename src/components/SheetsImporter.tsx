@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { OrderData } from "../types";
-import { getGoogleSheetsCsvUrl, parseCsvLine, formatRupiah, generateId, DEFAULT_RATE } from "../utils";
+import { getGoogleSheetsCsvUrl, parseCsvLine, formatRupiah, generateId, DEFAULT_RATE, fetchSpreadsheetText } from "../utils";
 import {
   FileSpreadsheet,
   Link2,
@@ -202,12 +202,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
     updateSourceState(id, { errorMsg: "", successMsg: "" });
 
     try {
-      const response = await fetch(parseResult.csvUrl);
-      if (!response.ok) {
-        throw new Error("Gagal mengunduh berkas spreadsheet. Pastikan pengaturan Akses Umum adalah 'Siapa saja yang memiliki link dapat melihat' (Anyone with URL can view).");
-      }
-
-      const text = await response.text();
+      const text = await fetchSpreadsheetText(parseResult.csvUrl, source.name);
       const lines = text.split(/\r?\n/).filter(line => line.trim());
       
       if (lines.length === 0) {
@@ -342,12 +337,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
       throw new Error(`[${source.name}] Tautan tidak valid.`);
     }
 
-    const response = await fetch(parseResult.csvUrl);
-    if (!response.ok) {
-      throw new Error(`[${source.name}] Gagal mengunduh lembar laporan.`);
-    }
-
-    const text = await response.text();
+    const text = await fetchSpreadsheetText(parseResult.csvUrl, source.name);
     const lines = text.split(/\r?\n/).filter(line => line.trim());
 
     if (lines.length <= 1) {

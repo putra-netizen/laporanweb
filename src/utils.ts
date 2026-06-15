@@ -281,6 +281,40 @@ export function getGoogleSheetsCsvUrl(inputUrl: string): { csvUrl: string; sprea
   }
 }
 
+/**
+ * Fetches Google Sheets text with an automatic CORS fallback to bypass Vercel restrictions.
+ * Direct fetch can fail with CORS blocks on production/Vercel (especially for standard shared link exports),
+ * in which case we safely fall back to an open, secure CORS proxy (api.allorigins.win).
+ */
+export async function fetchSpreadsheetText(url: string, sourceName?: string): Promise<string> {
+  const displayName = sourceName ? `[${sourceName}] ` : "";
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      return await response.text();
+    }
+    throw new Error(`Direct fetch status: ${response.status}`);
+  } catch (error) {
+    console.warn(`${displayName}Direct fetch failed due to CORS or network block, trying backup proxy...`, error);
+    try {
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const proxyResponse = await fetch(proxyUrl);
+      if (proxyResponse.ok) {
+        return await proxyResponse.text();
+      }
+      throw new Error(`Proxy status: ${proxyResponse.status}`);
+    } catch (proxyError) {
+      console.error(`${displayName}CORS proxy bypass also failed:`, proxyError);
+    }
+    
+    throw new Error(
+      `Gagal mengunduh spreadsheet. Pastikan:\n` +
+      `1. Pengaturan Akses Umum spreadsheet disetel ke 'Siapa saja yang memiliki link dapat melihat' (Anyone with URL can view).\n` +
+      `2. ATAU gunakan fitur 'Publikasikan ke Web' (File -> Bagikan -> Publikasikan ke web -> pilih tipe 'Nilai yang dipisahkan koma (.csv)') lalu gunakan link hasil publikasi tersebut.`
+    );
+  }
+}
+
 // Convert order data to CSV string for export
 export function convertToCSV(data: OrderData[]): string {
   const headers = [

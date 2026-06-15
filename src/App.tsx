@@ -11,6 +11,7 @@ import {
   DEFAULT_RATE,
   getGoogleSheetsCsvUrl,
   parseCsvLine,
+  fetchSpreadsheetText,
 } from "./utils";
 import DashboardStats from "./components/DashboardStats";
 import PerformanceChart from "./components/PerformanceChart";
@@ -116,11 +117,7 @@ export default function App() {
                 const parseResult = getGoogleSheetsCsvUrl(source.url);
                 if (!parseResult) return Promise.resolve([]);
 
-                return fetch(parseResult.csvUrl)
-                  .then((res) => {
-                    if (!res.ok) throw new Error("Gagal mengunduh spreadsheet");
-                    return res.text();
-                  })
+                return fetchSpreadsheetText(parseResult.csvUrl, source.name)
                   .then((text) => {
                     const lines = text.split(/\r?\n/).filter((line) => line.trim());
                     if (lines.length <= 1) return [];
@@ -300,9 +297,7 @@ export default function App() {
             setIsRealtimeSyncing(true);
             const parseResult = getGoogleSheetsCsvUrl(config.url);
             if (parseResult) {
-              const res = await fetch(parseResult.csvUrl);
-              if (!res.ok) throw new Error("Gagal mengunduh spreadsheet");
-              const text = await res.text();
+              const text = await fetchSpreadsheetText(parseResult.csvUrl, "Google Spreadsheet");
               const lines = text.split(/\r?\n/).filter((line) => line.trim());
               if (lines.length <= 1) {
                 setIsRealtimeSyncing(false);
