@@ -165,12 +165,11 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
         if (Array.isArray(parsed) && parsed.length === 2) {
           initialSources = parsed.map((item, idx) => {
             const defaultUrl = idx === 0 ? PERMANENT_SHEETS_SOURCE_1 : PERMANENT_SHEETS_SOURCE_2;
-            const finalUrl = (item.url && item.url.trim()) ? item.url : defaultUrl;
             return {
               ...item,
               id: idx === 0 ? "source_1" : "source_2",
               name: item.name || `Sumber Laporan ${idx + 1}`,
-              url: finalUrl,
+              url: defaultUrl, // Force permanent URL to stay active and completely unchangeable
               mappings: item.mappings || { ...DEFAULT_MAPPINGS },
               headers: item.headers || [],
               rawRows: item.rawRows || [],
@@ -434,9 +433,10 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
   };
 
   const handleDisconnect = (id: "source_1" | "source_2") => {
-    if (confirm(`Apakah Anda ingin memutuskan tautan untuk ${sources.find(s => s.id === id)?.name}?`)) {
+    const defaultUrl = id === "source_1" ? PERMANENT_SHEETS_SOURCE_1 : PERMANENT_SHEETS_SOURCE_2;
+    if (confirm(`Apakah Anda ingin memasang ulang dan memuat ulang koneksi untuk ${sources.find(s => s.id === id)?.name}?`)) {
       updateSourceState(id, {
-        url: "",
+        url: defaultUrl,
         spreadsheetId: "",
         gid: "0",
         isConnected: false,
@@ -806,7 +806,12 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
           <form onSubmit={(e) => handleConnectSheet(activeSource.id, e)} className="space-y-3">
             <div>
               <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1.5 flex items-center justify-between">
-                <span>Alamat Tautan (URL) Google Sheet - {activeSource.name}</span>
+                <span className="flex items-center gap-1">
+                  <span>Alamat Tautan (URL) Google Sheet - {activeSource.name}</span>
+                  <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                    🔒 PERMANEN
+                  </span>
+                </span>
                 <span className={`font-black text-[10px] uppercase ${activeSource.isConnected ? "text-emerald-600" : "text-amber-500"}`}>
                   {activeSource.isConnected ? "✓ Tersambung" : "● Belum Konek"}
                 </span>
@@ -818,15 +823,10 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
                   <input
                     type="text"
                     value={activeSource.url}
-                    onChange={(e) => {
-                      updateSourceState(activeSource.id, { 
-                        url: e.target.value,
-                        errorMsg: "",
-                        successMsg: "" 
-                      });
-                    }}
-                    placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
-                    className="w-full text-xs py-2.5 pl-10 pr-4 bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 transition-all text-slate-800"
+                    readOnly={true}
+                    placeholder="Belum ada URL terpasang"
+                    className="w-full text-xs py-2.5 pl-10 pr-4 bg-slate-100/80 border border-slate-200 rounded-xl cursor-not-allowed select-none text-slate-500 font-mono"
+                    title="Tautan ini telah dipermanenkan di backend dan tidak dapat diubah dari UI."
                   />
                 </div>
                 
@@ -838,18 +838,21 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
                   {isConnecting ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   ) : activeSource.isConnected ? (
-                    <span>Uji Kembali</span>
+                    <span>Refresh Koneksi</span>
                   ) : (
                     <span>Hubungkan</span>
                   )}
                 </button>
               </div>
+              <p className="text-[9px] text-slate-400 font-medium leading-normal mt-1.5">
+                * Tautan Google Sheet ini sudah dikunci secara permanen di server/backend kami agar selalu otomatis sinkron tanpa perlu diinput lagi. Anda dapat mengubah tautan ini langsung melalui berkas file konfigurasi <code className="bg-slate-100 px-1 py-0.5 rounded font-mono font-bold text-slate-600">src/utils.ts</code> atau <code className="bg-slate-100 px-1 py-0.5 rounded font-mono font-bold text-slate-600">.env</code>.
+              </p>
             </div>
 
             {activeSource.url && !activeSource.url.includes("/d/e/") && (
               <div className="text-[11px] bg-amber-50 border border-amber-200 text-amber-950 p-3.5 rounded-xl space-y-1.5 shadow-3xs">
                 <span className="font-black flex items-center gap-1.5 text-amber-800">
-                  <span className="text-sm">💡</span> Tips Bebas Limit & CORS Vercel (Paling Direkomendasikan):
+                  <span className="text-sm">💡</span> Tips Bebas Limit & CORS Vercel (Rekomendasi Utama):
                 </span>
                 <p className="leading-relaxed">
                   Tautan yang Anda gunakan saat ini adalah tautan berbagi editor biasa. Pada server publik (Vercel), Google sering membatasi tautan jenis ini atau meminta login.
@@ -861,7 +864,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
                     <li>Di pojok kiri atas, klik menu <b>File</b> → <b>Bagikan (Share)</b> → <b>Publikasikan ke web (Publish to web)</b>.</li>
                     <li>Ubah pilihan dropdown "Halaman Web" menjadi <b>"Nilai yang dipisahkan koma (.csv)"</b>.</li>
                     <li>Klik tombol hijau <b>Publikasikan (Publish)</b> kemudian klik OK.</li>
-                    <li><b>Penting:</b> Salin tautan hasil publikasi yang berakhiran <code className="bg-amber-100 px-1 py-0.5 rounded text-[9px] font-mono font-bold text-amber-900">/pub?output=csv</code> tersebut lalu paste di kolom input di atas!</li>
+                    <li>Ganti URL di berkas <code className="bg-amber-100 px-1 py-0.5 rounded text-[9px] font-mono font-bold text-amber-900">src/utils.ts</code> dengan URL hasil publikasi berakhiran <code className="bg-amber-100 px-1 py-0.5 rounded text-[9px] font-mono font-bold text-amber-900">/pub?output=csv</code> tersebut agar koneksi internet super cepat dan tanpa hambatan!</li>
                   </ol>
                 </div>
               </div>
@@ -937,9 +940,9 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
                 <button
                   type="button"
                   onClick={() => handleDisconnect(activeSource.id)}
-                  className="px-3 py-1.5 border border-rose-200 hover:bg-rose-50 text-rose-600 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                  className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                 >
-                  Disconnect Sheet
+                  Reset & Reload Tautan
                 </button>
 
                 <button
