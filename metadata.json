@@ -1,0 +1,6 @@
+{
+  "name": "Dashboard Performa Order",
+  "description": "Dashboard untuk melacak performa order, pemasukan Shopee, pengeluaran upah worker, grafik komparasi profit, dan ekspor laporan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
