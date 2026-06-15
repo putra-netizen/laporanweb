@@ -9,8 +9,8 @@ import { OrderData, ShopeeTransaction, WorkerPerformance, MonthlyTrendData } fro
 // Anda dapat mengaturnya langsung di sini ATAU lewat Environment Variables:
 // - VITE_SHEETS_SOURCE_1: Tautan untuk Sumber Laporan 1
 // - VITE_SHEETS_SOURCE_2: Tautan untuk Sumber Laporan 2
-export const PERMANENT_SHEETS_SOURCE_1 = (import.meta as any).env?.VITE_SHEETS_SOURCE_1 || "https://docs.google.com/spreadsheets/d/1XyqyO0K7Plo8d8t8K9YV-V_1XyqwepW-M_XzY-aBcDe/edit";
-export const PERMANENT_SHEETS_SOURCE_2 = (import.meta as any).env?.VITE_SHEETS_SOURCE_2 || "https://docs.google.com/spreadsheets/d/1XyqyO0K7Plo8d8t8K9YV-V_1XyqwepW-M_XzY-aBcDe/edit";
+export const PERMANENT_SHEETS_SOURCE_1 = (import.meta as any).env?.VITE_SHEETS_SOURCE_1 || "https://docs.google.com/spreadsheets/d/e/2PACX-1vT3jY16vyl34OXgongBsct6Agb6S3PstBMiZnzjXogwIZsMTcxmUMQ8yrVwkG_0bVOUqhsK6ebhe1Oj/pub?gid=0&single=true&output=csv";
+export const PERMANENT_SHEETS_SOURCE_2 = (import.meta as any).env?.VITE_SHEETS_SOURCE_2 || "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH2r59Rn5uSaa-_kOuP6m65O4gRlHneYI90mHN0SFecSWtcIY2HZHURWhK0eb8WtRRhwuJYtIXsCU7/pub?gid=0&single=true&output=csv";
 
 // Default rate per order is Rp 500
 export const DEFAULT_RATE = 500;
