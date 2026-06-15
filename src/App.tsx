@@ -12,6 +12,8 @@ import {
   getGoogleSheetsCsvUrl,
   parseCsvLine,
   fetchSpreadsheetText,
+  PERMANENT_SHEETS_SOURCE_1,
+  PERMANENT_SHEETS_SOURCE_2,
 } from "./utils";
 import DashboardStats from "./components/DashboardStats";
 import PerformanceChart from "./components/PerformanceChart";
@@ -39,6 +41,8 @@ export default function App() {
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [shopeeTransactions, setShopeeTransactions] = useState<ShopeeTransaction[]>([]);
   const [rate, setRate] = useState<number>(DEFAULT_RATE);
+  const [source1Rate, setSource1Rate] = useState<number>(220);
+  const [source2Rate, setSource2Rate] = useState<number>(500);
   const [activeTab, setActiveTab] = useState<"overview" | "table" | "shopee" | "workers" | "import">( "overview");
   const [alert, setAlert] = useState<{ type: "success" | "info" | "error"; message: string } | null>(null);
   
@@ -52,6 +56,26 @@ export default function App() {
     const savedRate = localStorage.getItem("order_tariff_rate");
     if (savedRate) {
       setRate(Number(savedRate));
+    }
+
+    // Load custom source rates from multisource config
+    const savedMultisource = localStorage.getItem("google_sheets_multisource_config");
+    if (savedMultisource) {
+      try {
+        const parsed = JSON.parse(savedMultisource);
+        if (Array.isArray(parsed)) {
+          const s1 = parsed.find(s => s.id === "source_1");
+          const s2 = parsed.find(s => s.id === "source_2");
+          if (s1) {
+            setSource1Rate(s1.rate !== undefined ? s1.rate : 220);
+          }
+          if (s2) {
+            setSource2Rate(s2.rate !== undefined ? s2.rate : 500);
+          }
+        }
+      } catch (e) {
+        console.error("Gagal memuat rate dari multisource config:", e);
+      }
     }
 
     // 2. Load orders
@@ -74,22 +98,35 @@ export default function App() {
       localStorage.setItem("order_dashboard_data", JSON.stringify([]));
     }
 
-    // 3. Load Shopee transactions
+    // 3. Load Shopee transactions with auto-cleanup of old mock data
     const savedShopee = localStorage.getItem("shopee_dashboard_data");
+    let initialList: ShopeeTransaction[] = [];
     if (savedShopee) {
       try {
-        setShopeeTransactions(JSON.parse(savedShopee));
+        initialList = JSON.parse(savedShopee);
       } catch (e) {
-        const initialShopee = parseShopeeCSV(INITIAL_SHOPEE_CSV_DATA);
-        setShopeeTransactions(initialShopee);
-        localStorage.setItem("shopee_dashboard_data", JSON.stringify(initialShopee));
+        initialList = parseShopeeCSV(INITIAL_SHOPEE_CSV_DATA);
       }
     } else {
-      const initialShopee = parseShopeeCSV(INITIAL_SHOPEE_CSV_DATA);
-      setShopeeTransactions(initialShopee);
-      localStorage.setItem("shopee_dashboard_data", JSON.stringify(initialShopee));
-      triggerAlert("success", "Dashboard siap. Laporan Shopee & Worker dimuat secara lokal.");
+      initialList = parseShopeeCSV(INITIAL_SHOPEE_CSV_DATA);
     }
+
+    // Migration flag to ensure we do it once and clear all default seed data
+    const keyCleared = "shopee_data_cleaned_manual_v3";
+    if (!localStorage.getItem(keyCleared)) {
+      // Keep only manually created transactions (or non-sample ones).
+      // The sample transactions have the old format/dates or ID starting with "shopee-" 
+      // where they don't have user alterations. Let's filter those obsolete ones.
+      initialList = initialList.filter(tx => 
+        tx.tipeTransaksi !== "Penghasilan dari Pesanan" && 
+        tx.tipeTransaksi !== "Penarikan Dana" &&
+        !tx.id.startsWith("shopee-")
+      );
+      localStorage.setItem("shopee_dashboard_data", JSON.stringify(initialList));
+      localStorage.setItem(keyCleared, "true");
+    }
+
+    setShopeeTransactions(initialList);
   }, []);
 
   const triggerAlert = (type: "success" | "info" | "error", message: string) => {
@@ -475,6 +512,104 @@ export default function App() {
     localStorage.setItem("order_tariff_rate", newRate.toString());
   };
 
+  const handleSourceRateChange = (sourceId: "source_1" | "source_2", newRate: number) => {
+    if (isNaN(newRate) || newRate < 0) return;
+    
+    if (sourceId === "source_1") {
+      setSource1Rate(newRate);
+    } else {
+      setSource2Rate(newRate);
+    }
+
+    const savedMultisource = localStorage.getItem("google_sheets_multisource_config");
+    let sourcesList: any[] = [];
+    if (savedMultisource) {
+      try {
+        sourcesList = JSON.parse(savedMultisource);
+      } catch (e) {
+        console.error("Gagal parse multisource config.");
+      }
+    }
+
+    if (!Array.isArray(sourcesList) || sourcesList.length === 0) {
+      sourcesList = [
+        {
+          id: "source_1",
+          name: "Jasa Spam WA",
+          url: PERMANENT_SHEETS_SOURCE_1,
+          spreadsheetId: "",
+          gid: "0",
+          isConnected: false,
+          headers: [],
+          rawRows: [],
+          lastSyncTime: null,
+          rate: sourceId === "source_1" ? newRate : 220,
+          mappings: {
+            worker: "Worker",
+            noOrder: "No Order",
+            orderCount: "Jumlah Order",
+            tanggal: "Tanggal",
+            namaToko: "Nama Toko",
+            namaKlien: "Nama Klien",
+            noTarget: "No Target",
+            spam: "Spam",
+            admin: "Admin",
+            limit: "Limit",
+            linkBukti: "Link Bukti"
+          }
+        },
+        {
+          id: "source_2",
+          name: "REPORT ALL SOSMED",
+          url: PERMANENT_SHEETS_SOURCE_2,
+          spreadsheetId: "",
+          gid: "0",
+          isConnected: false,
+          headers: [],
+          rawRows: [],
+          lastSyncTime: null,
+          rate: sourceId === "source_2" ? newRate : 500,
+          mappings: {
+            worker: "Worker",
+            noOrder: "No Order",
+            orderCount: "Jumlah Order",
+            tanggal: "Tanggal",
+            namaToko: "Nama Toko",
+            namaKlien: "Nama Klien",
+            noTarget: "No Target",
+            spam: "Spam",
+            admin: "Admin",
+            limit: "Limit",
+            linkBukti: "Link Bukti"
+          }
+        }
+      ];
+    } else {
+      sourcesList = sourcesList.map((s: any) => {
+        if (s.id === sourceId) {
+          return { ...s, rate: newRate };
+        }
+        return s;
+      });
+    }
+
+    localStorage.setItem("google_sheets_multisource_config", JSON.stringify(sourcesList));
+    
+    // Dynamically update loaded orders in state so calculations update instantly
+    setOrders((prev) => {
+      const nextArr = prev.map((ord) => {
+        if (ord.sourceId === sourceId) {
+          return { ...ord, customRate: newRate };
+        }
+        return ord;
+      });
+      localStorage.setItem("order_dashboard_data", JSON.stringify(nextArr));
+      return nextArr;
+    });
+
+    triggerAlert("success", `Tarif ${sourceId === "source_1" ? "Jasa Spam WA" : "REPORT ALL SOSMED"} diupdate ke Rp ${newRate}`);
+  };
+
   // Add Order
   const handleAddOrder = (newOrder: OrderData) => {
     const updated = [newOrder, ...orders];
@@ -721,28 +856,49 @@ export default function App() {
             <span>Import Excel / CSV</span>
           </button>
 
-          <div className="pt-6 text-slate-500 px-3 py-2 text-[10px] uppercase tracking-wider font-extrabold">
-            Settings & Rate
+          <div className="pt-6 text-slate-400 px-3 py-2 text-[10px] uppercase tracking-wider font-extrabold flex items-center gap-1.5">
+            <Coins className="w-3.5 h-3.5 text-slate-400" />
+            <span>Pengaturan Tarif</span>
           </div>
           
-          {/* Custom tariff modifier styled nicely in the sidebar menu */}
-          <div className="px-3 py-2 bg-slate-950/40 border border-slate-800 rounded-xl space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-              Tarif Order (Default Rp 500)
-            </label>
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg p-1">
-              <span className="text-[11px] font-bold text-slate-500 pl-1">Rp</span>
-              <input
-                type="number"
-                value={rate}
-                onChange={(e) => handleRateChange(Number(e.target.value))}
-                className="w-full bg-transparent border-none text-[11px] font-extrabold text-white focus:ring-0 focus:outline-hidden p-0"
-                placeholder="500"
-              />
+          <div className="space-y-2.5 px-3">
+            {/* Jasa Spam WA Rate */}
+            <div className="p-2.5 bg-slate-950/40 border border-slate-800 rounded-xl space-y-2.5">
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block flex items-center justify-between">
+                <span>Jasa Spam WA</span>
+                <span className="text-[9px] font-medium text-emerald-500 bg-emerald-500/10 px-1 py-0.5 rounded">Default: Rp 220</span>
+              </label>
+              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg p-1">
+                <span className="text-[11px] font-bold text-slate-500 pl-1 font-mono">Rp</span>
+                <input
+                  type="number"
+                  value={source1Rate}
+                  onChange={(e) => handleSourceRateChange("source_1", Number(e.target.value))}
+                  className="w-full bg-transparent border-none text-[12px] font-extrabold text-white focus:ring-0 focus:outline-hidden p-0 font-mono"
+                  placeholder="220"
+                />
+              </div>
             </div>
-            <p className="text-[9px] text-slate-500 leading-normal">
-              Nominal penentu bayaran total orders worker aktif.
-            </p>
+
+            {/* REPORT ALL SOSMED Rate */}
+            <div className="p-2.5 bg-slate-950/40 border border-slate-800 rounded-xl space-y-2.5">
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block flex items-center justify-between">
+                <span>REPORT ALL SOSMED</span>
+                <span className="text-[9px] font-medium text-emerald-500 bg-emerald-500/10 px-1 py-0.5 rounded">Default: Rp 500</span>
+              </label>
+              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg p-1">
+                <span className="text-[11px] font-bold text-slate-500 pl-1 font-mono">Rp</span>
+                <input
+                  type="number"
+                  value={source2Rate}
+                  onChange={(e) => handleSourceRateChange("source_2", Number(e.target.value))}
+                  className="w-full bg-transparent border-none text-[12px] font-extrabold text-white focus:ring-0 focus:outline-hidden p-0 font-mono"
+                  placeholder="500"
+                />
+              </div>
+            </div>
+
+
           </div>
         </nav>
 

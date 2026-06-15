@@ -80,7 +80,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
   const [sources, setSources] = useState<SheetSource[]>([
     {
       id: "source_1",
-      name: "Sumber Laporan 1",
+      name: "Jasa Spam WA",
       url: PERMANENT_SHEETS_SOURCE_1,
       spreadsheetId: "",
       gid: "0",
@@ -90,12 +90,12 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
       lastSyncTime: null,
       errorMsg: "",
       successMsg: "",
-      rate: 500,
+      rate: 220,
       mappings: { ...DEFAULT_MAPPINGS }
     },
     {
       id: "source_2",
-      name: "Sumber Laporan 2",
+      name: "REPORT ALL SOSMED",
       url: PERMANENT_SHEETS_SOURCE_2,
       spreadsheetId: "",
       gid: "0",
@@ -129,7 +129,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
     let initialSources: SheetSource[] = [
       {
         id: "source_1",
-        name: "Sumber Laporan 1",
+        name: "Jasa Spam WA",
         url: PERMANENT_SHEETS_SOURCE_1,
         spreadsheetId: "",
         gid: "0",
@@ -139,12 +139,12 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
         lastSyncTime: null,
         errorMsg: "",
         successMsg: "",
-        rate: 500,
+        rate: 220,
         mappings: { ...DEFAULT_MAPPINGS }
       },
       {
         id: "source_2",
-        name: "Sumber Laporan 2",
+        name: "REPORT ALL SOSMED",
         url: PERMANENT_SHEETS_SOURCE_2,
         spreadsheetId: "",
         gid: "0",
@@ -165,15 +165,28 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
         if (Array.isArray(parsed) && parsed.length === 2) {
           initialSources = parsed.map((item, idx) => {
             const defaultUrl = idx === 0 ? PERMANENT_SHEETS_SOURCE_1 : PERMANENT_SHEETS_SOURCE_2;
+            const defaultName = idx === 0 ? "Jasa Spam WA" : "REPORT ALL SOSMED";
+            const defaultRate = idx === 0 ? 220 : 500;
+
+            const isGenericName = !item.name || item.name.startsWith("Sumber Laporan");
+            const finalName = isGenericName ? defaultName : item.name;
+
+            let finalRate = item.rate;
+            if (finalRate === undefined) {
+              finalRate = defaultRate;
+            } else if (idx === 0 && finalRate === 500) {
+              finalRate = 220; // Upgrade old default to 220
+            }
+
             return {
               ...item,
               id: idx === 0 ? "source_1" : "source_2",
-              name: item.name || `Sumber Laporan ${idx + 1}`,
+              name: finalName,
               url: defaultUrl, // Force permanent URL to stay active and completely unchangeable
               mappings: item.mappings || { ...DEFAULT_MAPPINGS },
               headers: item.headers || [],
               rawRows: item.rawRows || [],
-              rate: item.rate !== undefined ? item.rate : 500,
+              rate: finalRate,
               errorMsg: "",
               successMsg: ""
             };

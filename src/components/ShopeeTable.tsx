@@ -97,11 +97,11 @@ export default function ShopeeTable({
     const now = new Date();
     const formattedNow = now.toISOString().replace("T", " ").substring(0, 19);
     setTanggal(formattedNow);
-    setTipe("Penghasilan dari Pesanan");
-    setDeskripsi("Penghasilan dari Pesanan #");
-    setNoPesanan("");
+    setTipe("Omset");
+    setDeskripsi("Pemasukan Shopee (Omset)");
+    setNoPesanan("-");
     setJenis("Transaksi Masuk");
-    setJumlah(35000);
+    setJumlah(50000);
     setStatus("Transaksi Selesai");
     setSaldoAkhir(0);
     setIsModalOpen(true);
@@ -450,8 +450,9 @@ export default function ShopeeTable({
                 <select
                   value={tipe}
                   onChange={(e) => setTipe(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-orange-500"
+                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-orange-500 font-medium text-slate-800"
                 >
+                  <option value="Omset">Omset</option>
                   <option value="Penghasilan dari Pesanan">Penghasilan dari Pesanan</option>
                   <option value="Penarikan Dana">Penarikan Dana</option>
                   <option value="Penyesuaian">Penyesuaian</option>

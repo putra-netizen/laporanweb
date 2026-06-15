@@ -41,35 +41,13 @@ Ke;2026-03-31;;;;;;
 ** Semua perubahan yang dibuat di laporan yang di-download akan menjadi tanggung jawab Penjual.;;;;;;;
 ;;;;;;;
 Ringkasan;;;;$;Mata Uang;Jumlah Transaksi;
-Total Saldo Masuk;;;;2875549;IDR;115;
-Total Saldo Keluar;;;;-2887440;IDR;4;
+Total Saldo Masuk;;;;0;IDR;0;
+Total Saldo Keluar;;;;0;IDR;0;
 ;;;;;;;
 ;;;;;;;
 Rincian Transaksi;;;;;;;
 ;;;;;;;
-Tanggal Transaksi;Tipe Transaksi;Deskripsi;No. Pesanan;Jenis Transaksi;Jumlah;Status;Saldo Akhir
-2026-03-31 01:56:48;Penarikan Dana;Penarikan Dana;-;Transaksi Keluar;-880530;Transaksi Selesai;0
-2026-03-30 11:12:16;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603265WXHHPR2;2603265WXHHPR2;Transaksi Masuk;35117;Transaksi Selesai;880530
-2026-03-30 10:50:38;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603265WSS0G1X;2603265WSS0G1X;Transaksi Masuk;211151;Transaksi Selesai;845413
-2026-03-30 10:08:39;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603265P410HF3;2603265P410HF3;Transaksi Masuk;63842;Transaksi Selesai;634262
-2026-03-28 14:58:27;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603252WQMH6BJ;2603252WQMH6BJ;Transaksi Masuk;161479;Transaksi Selesai;570420
-2026-03-22 20:19:17;Penghasilan dari Pesanan;Penghasilan dari Pesanan #26031329S33RGN;26031329S33RGN;Transaksi Masuk;33550;Transaksi Selesai;408941
-2026-03-22 20:18:22;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603132NUXQDGM;2603132NUXQDGM;Transaksi Masuk;37371;Transaksi Selesai;375391
-2026-03-22 05:52:36;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603158BEHKHEB;2603158BEHKHEB;Transaksi Masuk;14265;Transaksi Selesai;338020
-2026-03-21 21:27:14;Penghasilan dari Pesanan;Penghasilan dari Pesanan #260312UY6YG9VJ;260312UY6YG9VJ;Transaksi Masuk;13723;Transaksi Selesai;323755
-2026-03-21 12:31:00;Penghasilan dari Pesanan;Penghasilan dari Pesanan #260317CPDE4FF1;260317CPDE4FF1;Transaksi Masuk;63842;Transaksi Selesai;310032
-2026-03-20 18:10:27;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603144WMD1JAN;2603144WMD1JAN;Transaksi Masuk;14265;Transaksi Selesai;246190
-2026-03-20 00:03:25;Penghasilan dari Pesanan;Penghasilan dari Pesanan #260310RSE50B2K;260310RSE50B2K;Transaksi Masuk;13723;Transaksi Selesai;231925
-2026-03-19 21:58:38;Penghasilan dari Pesanan;Penghasilan dari Pesanan #260310REC2CS6P;260310REC2CS6P;Transaksi Masuk;14265;Transaksi Selesai;218202
-2026-03-18 21:24:39;Penghasilan dari Pesanan;Penghasilan dari Pesanan #260309NRYA79AK;260309NRYA79AK;Transaksi Masuk;13215;Transaksi Selesai;203937
-2026-03-18 11:43:52;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603144GGNFQJ4;2603144GGNFQJ4;Transaksi Masuk;59436;Transaksi Selesai;190722
-2026-03-18 07:45:20;Penghasilan dari Pesanan;Penghasilan dari Pesanan #260311U18K7GT6;260311U18K7GT6;Transaksi Masuk;68548;Transaksi Selesai;131286
-2026-03-17 15:50:48;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603157D7U8VNF;2603157D7U8VNF;Transaksi Masuk;13222;Transaksi Selesai;62738
-2026-03-17 08:55:25;Penghasilan dari Pesanan;Penghasilan dari Pesanan #26031581DJFEA4;26031581DJFEA4;Transaksi Masuk;13229;Transaksi Selesai;49516
-2026-03-16 21:13:38;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603157FDRJTP7;2603157FDRJTP7;Transaksi Masuk;22022;Transaksi Selesai;36287
-2026-03-16 03:05:11;Penghasilan dari Pesanan;Penghasilan dari Pesanan #260306EE2YVBG8;260306EE2YVBG8;Transaksi Masuk;14265;Transaksi Selesai;14265
-2026-03-16 02:32:35;Penarikan Dana;Penarikan Dana;-;Transaksi Keluar;-1161372;Transaksi Selesai;0
-2026-03-16 01:43:44;Penghasilan dari Pesanan;Penghasilan dari Pesanan #2603144RJDT6F3;2603144RJDT6F3;Transaksi Masuk;14265;Transaksi Selesai;1161372`;
+Tanggal Transaksi;Tipe Transaksi;Deskripsi;No. Pesanan;Jenis Transaksi;Jumlah;Status;Saldo Akhir`;
 
 export function formatRupiah(amount: number): string {
   // support negative amounts as well
