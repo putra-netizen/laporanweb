@@ -846,6 +846,27 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
               </div>
             </div>
 
+            {activeSource.url && !activeSource.url.includes("/d/e/") && (
+              <div className="text-[11px] bg-amber-50 border border-amber-200 text-amber-950 p-3.5 rounded-xl space-y-1.5 shadow-3xs">
+                <span className="font-black flex items-center gap-1.5 text-amber-800">
+                  <span className="text-sm">💡</span> Tips Bebas Limit & CORS Vercel (Paling Direkomendasikan):
+                </span>
+                <p className="leading-relaxed">
+                  Tautan yang Anda gunakan saat ini adalah tautan berbagi editor biasa. Pada server publik (Vercel), Google sering membatasi tautan jenis ini atau meminta login.
+                </p>
+                <div className="text-[10px] bg-amber-100/40 p-2.5 rounded-lg text-amber-950 font-normal space-y-1">
+                  <p className="font-bold text-amber-900">Cara mempublikasikan ke publik agar sinkronisasi 100% instan, tanpa limit & stabil:</p>
+                  <ol className="list-decimal pl-4 space-y-1 leading-normal text-slate-700">
+                    <li>Buka file Google Sheets Anda.</li>
+                    <li>Di pojok kiri atas, klik menu <b>File</b> → <b>Bagikan (Share)</b> → <b>Publikasikan ke web (Publish to web)</b>.</li>
+                    <li>Ubah pilihan dropdown "Halaman Web" menjadi <b>"Nilai yang dipisahkan koma (.csv)"</b>.</li>
+                    <li>Klik tombol hijau <b>Publikasikan (Publish)</b> kemudian klik OK.</li>
+                    <li><b>Penting:</b> Salin tautan hasil publikasi yang berakhiran <code className="bg-amber-100 px-1 py-0.5 rounded text-[9px] font-mono font-bold text-amber-900">/pub?output=csv</code> tersebut lalu paste di kolom input di atas!</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+
             {/* Custom Rate Block for specific Source */}
             <div className="bg-emerald-50/40 border border-emerald-100 rounded-xl p-3.5 space-y-2">
               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">

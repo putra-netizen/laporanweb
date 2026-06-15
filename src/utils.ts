@@ -296,35 +296,110 @@ export function getGoogleSheetsCsvUrl(inputUrl: string): { csvUrl: string; sprea
 /**
  * Fetches Google Sheets text with an automatic CORS fallback to bypass Vercel restrictions.
  * Direct fetch can fail with CORS blocks on production/Vercel (especially for standard shared link exports),
- * in which case we safely fall back to an open, secure CORS proxy (api.allorigins.win).
+ * in which case we try multiple fast, open, secure CORS-bypass proxies sequentially.
  */
 export async function fetchSpreadsheetText(url: string, sourceName?: string): Promise<string> {
   const displayName = sourceName ? `[${sourceName}] ` : "";
+  
+  const isHtmlOrLoginResponse = (text: string): boolean => {
+    const lower = text.toLowerCase().trim();
+    return (
+      lower.includes("<!doctype html") ||
+      lower.includes("<html") ||
+      lower.includes("google accounts") ||
+      lower.includes("servicelogin") ||
+      lower.includes("login.google") ||
+      lower.includes("sign in - google accounts") ||
+      lower.startsWith("<html") ||
+      lower.startsWith("<!doctype")
+    );
+  };
+
+  const privateErrorMsg = 
+    `SINKRONISASI DIPERLUKAN (AKSES PRIVATE SPREADSHEET):\n\n` +
+    `Google Sheets menolak akses tanpa login karena file masih bersifat Pribadi/Private.\n\n` +
+    `SOLUSI UTAMA (Sangat Direkomendasikan):\n` +
+    `1. Di Google Sheets Anda, buka menu 'File' -> 'Bagikan' -> 'Publikasikan ke web'.\n` +
+    `2. Pilih lembar laporan Anda, ubah format dari 'Halaman Web' menjadi 'Nilai yang dipisahkan koma (.csv)'.\n` +
+    `3. Klik tombol 'Publikasikan' (Publish) dan klik OK.\n` +
+    `4. Salin link publikasi tersebut (biasanya berakhiran /pub?output=csv) lalu tempelkan di aplikasi ini.\n\n` +
+    `Solusi Alternatif:\n` +
+    `- Pastikan menu 'Bagikan' di Google Sheets sudah diubah dari 'Dibatasi' (Restricted) menjadi 'Siapa saja yang memiliki link dapat melihat' (Anyone with URL can view).`;
+
+  // 1. Try direct fetch first
   try {
     const response = await fetch(url);
     if (response.ok) {
-      return await response.text();
-    }
-    throw new Error(`Direct fetch status: ${response.status}`);
-  } catch (error) {
-    console.warn(`${displayName}Direct fetch failed due to CORS or network block, trying backup proxy...`, error);
-    try {
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      const proxyResponse = await fetch(proxyUrl);
-      if (proxyResponse.ok) {
-        return await proxyResponse.text();
+      const text = await response.text();
+      if (text && text.trim().length > 0) {
+        if (isHtmlOrLoginResponse(text)) {
+          throw new Error(privateErrorMsg);
+        }
+        return text;
       }
-      throw new Error(`Proxy status: ${proxyResponse.status}`);
-    } catch (proxyError) {
-      console.error(`${displayName}CORS proxy bypass also failed:`, proxyError);
     }
-    
-    throw new Error(
-      `Gagal mengunduh spreadsheet. Pastikan:\n` +
-      `1. Pengaturan Akses Umum spreadsheet disetel ke 'Siapa saja yang memiliki link dapat melihat' (Anyone with URL can view).\n` +
-      `2. ATAU gunakan fitur 'Publikasikan ke Web' (File -> Bagikan -> Publikasikan ke web -> pilih tipe 'Nilai yang dipisahkan koma (.csv)') lalu gunakan link hasil publikasi tersebut.`
-    );
+  } catch (error: any) {
+    if (error.message && error.message.includes("SINKRONISASI DIPERLUKAN")) {
+      throw error;
+    }
+    console.warn(`${displayName}Direct fetch failed due to CORS or network block, trying backup proxies...`, error);
   }
+
+  // 2. Try list of high-reliability CORS proxies sequentially
+  const proxies = [
+    {
+      name: "corsproxy.io",
+      getUrl: (target: string) => `https://corsproxy.io/?${encodeURIComponent(target)}`
+    },
+    {
+      name: "allorigins",
+      getUrl: (target: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`
+    },
+    {
+      name: "codetabs",
+      getUrl: (target: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(target)}`
+    }
+  ];
+
+  for (const proxy of proxies) {
+    try {
+      const proxyUrl = proxy.getUrl(url);
+      
+      // Setup a 7-second abort controller so if one proxy hangs, we don't get stuck forever
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
+      
+      const response = await fetch(proxyUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const text = await response.text();
+        if (text && text.trim().length > 0 && !text.includes(`"error"`)) {
+          if (isHtmlOrLoginResponse(text)) {
+            throw new Error(privateErrorMsg);
+          }
+          console.log(`${displayName}Successfully connected and loaded spreadsheet via ${proxy.name} bypass proxy.`);
+          return text;
+        }
+      }
+      console.warn(`${displayName}Proxy ${proxy.name} returned bad status status: ${response.status}`);
+    } catch (e: any) {
+      if (e.message && e.message.includes("SINKRONISASI DIPERLUKAN")) {
+        throw e;
+      }
+      console.warn(`${displayName}Proxy ${proxy.name} failed or timed out:`, e.message || e);
+    }
+  }
+  
+  throw new Error(
+    `Gagal mendownload lembar kerja Google Sheets (RTO atau CORS Block di Vercel).\n\n` +
+    `SOLUSI UTAMA (100% Berhasil Secara Instan & Atasi Masalah Vercel):\n` +
+    `1. Di Google Sheets Anda, pilih menu 'File' -> 'Bagikan' -> 'Publikasikan ke web'.\n` +
+    `2. Pilih lembar laporan Anda, ubah tipe web page menjadi 'Nilai yang dipisahkan koma (.csv)' lalu klik tombol 'Publikasikan'.\n` +
+    `3. Salin link hasil publikasi tersebut lalu simpan di pengaturan aplikasi ini.\n\n` +
+    `Metode Alternatif:\n` +
+    `- Pastikan Akses Umum link diatur ke 'Siapa saja yang memiliki link dapat melihat' (Anyone with URL can view).`
+  );
 }
 
 // Convert order data to CSV string for export
