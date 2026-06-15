@@ -90,7 +90,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
       lastSyncTime: null,
       errorMsg: "",
       successMsg: "",
-      rate: 220,
+      rate: 500,
       mappings: { ...DEFAULT_MAPPINGS }
     },
     {
@@ -105,7 +105,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
       lastSyncTime: null,
       errorMsg: "",
       successMsg: "",
-      rate: 500,
+      rate: 220,
       mappings: { ...DEFAULT_MAPPINGS }
     }
   ]);
@@ -139,7 +139,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
         lastSyncTime: null,
         errorMsg: "",
         successMsg: "",
-        rate: 220,
+        rate: 500,
         mappings: { ...DEFAULT_MAPPINGS }
       },
       {
@@ -154,7 +154,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
         lastSyncTime: null,
         errorMsg: "",
         successMsg: "",
-        rate: 500,
+        rate: 220,
         mappings: { ...DEFAULT_MAPPINGS }
       }
     ];
@@ -166,7 +166,7 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
           initialSources = parsed.map((item, idx) => {
             const defaultUrl = idx === 0 ? PERMANENT_SHEETS_SOURCE_1 : PERMANENT_SHEETS_SOURCE_2;
             const defaultName = idx === 0 ? "Jasa Spam WA" : "REPORT ALL SOSMED";
-            const defaultRate = idx === 0 ? 220 : 500;
+            const defaultRate = idx === 0 ? 500 : 220;
 
             const isGenericName = !item.name || item.name.startsWith("Sumber Laporan");
             const finalName = isGenericName ? defaultName : item.name;
@@ -174,8 +174,10 @@ export default function SheetsImporter({ onImportOrders, ordersCount }: SheetsIm
             let finalRate = item.rate;
             if (finalRate === undefined) {
               finalRate = defaultRate;
-            } else if (idx === 0 && finalRate === 500) {
-              finalRate = 220; // Upgrade old default to 220
+            } else if (idx === 0 && finalRate === 220) {
+              finalRate = 500; // Upgrade old default to 500
+            } else if (idx === 1 && finalRate === 500) {
+              finalRate = 220; // Downgrade old default to 220
             }
 
             return {

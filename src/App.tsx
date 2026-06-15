@@ -41,8 +41,8 @@ export default function App() {
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [shopeeTransactions, setShopeeTransactions] = useState<ShopeeTransaction[]>([]);
   const [rate, setRate] = useState<number>(DEFAULT_RATE);
-  const [source1Rate, setSource1Rate] = useState<number>(220);
-  const [source2Rate, setSource2Rate] = useState<number>(500);
+  const [source1Rate, setSource1Rate] = useState<number>(500);
+  const [source2Rate, setSource2Rate] = useState<number>(220);
   const [activeTab, setActiveTab] = useState<"overview" | "table" | "shopee" | "workers" | "import">( "overview");
   const [alert, setAlert] = useState<{ type: "success" | "info" | "error"; message: string } | null>(null);
   
@@ -67,10 +67,14 @@ export default function App() {
           const s1 = parsed.find(s => s.id === "source_1");
           const s2 = parsed.find(s => s.id === "source_2");
           if (s1) {
-            setSource1Rate(s1.rate !== undefined ? s1.rate : 220);
+            let r1 = s1.rate !== undefined ? s1.rate : 500;
+            if (r1 === 220) r1 = 500; // migrate old default to new default (500)
+            setSource1Rate(r1);
           }
           if (s2) {
-            setSource2Rate(s2.rate !== undefined ? s2.rate : 500);
+            let r2 = s2.rate !== undefined ? s2.rate : 220;
+            if (r2 === 500) r2 = 220; // migrate old default to new default (220)
+            setSource2Rate(r2);
           }
         }
       } catch (e) {
@@ -543,7 +547,7 @@ export default function App() {
           headers: [],
           rawRows: [],
           lastSyncTime: null,
-          rate: sourceId === "source_1" ? newRate : 220,
+          rate: sourceId === "source_1" ? newRate : 500,
           mappings: {
             worker: "Worker",
             noOrder: "No Order",
@@ -568,7 +572,7 @@ export default function App() {
           headers: [],
           rawRows: [],
           lastSyncTime: null,
-          rate: sourceId === "source_2" ? newRate : 500,
+          rate: sourceId === "source_2" ? newRate : 220,
           mappings: {
             worker: "Worker",
             noOrder: "No Order",
@@ -866,7 +870,7 @@ export default function App() {
             <div className="p-2.5 bg-slate-950/40 border border-slate-800 rounded-xl space-y-2.5">
               <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block flex items-center justify-between">
                 <span>Jasa Spam WA</span>
-                <span className="text-[9px] font-medium text-emerald-500 bg-emerald-500/10 px-1 py-0.5 rounded">Default: Rp 220</span>
+                <span className="text-[9px] font-medium text-emerald-500 bg-emerald-500/10 px-1 py-0.5 rounded">Default: Rp 500</span>
               </label>
               <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg p-1">
                 <span className="text-[11px] font-bold text-slate-500 pl-1 font-mono">Rp</span>
@@ -875,7 +879,7 @@ export default function App() {
                   value={source1Rate}
                   onChange={(e) => handleSourceRateChange("source_1", Number(e.target.value))}
                   className="w-full bg-transparent border-none text-[12px] font-extrabold text-white focus:ring-0 focus:outline-hidden p-0 font-mono"
-                  placeholder="220"
+                  placeholder="500"
                 />
               </div>
             </div>
@@ -884,7 +888,7 @@ export default function App() {
             <div className="p-2.5 bg-slate-950/40 border border-slate-800 rounded-xl space-y-2.5">
               <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block flex items-center justify-between">
                 <span>REPORT ALL SOSMED</span>
-                <span className="text-[9px] font-medium text-emerald-500 bg-emerald-500/10 px-1 py-0.5 rounded">Default: Rp 500</span>
+                <span className="text-[9px] font-medium text-emerald-500 bg-emerald-500/10 px-1 py-0.5 rounded">Default: Rp 220</span>
               </label>
               <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg p-1">
                 <span className="text-[11px] font-bold text-slate-500 pl-1 font-mono">Rp</span>
@@ -893,7 +897,7 @@ export default function App() {
                   value={source2Rate}
                   onChange={(e) => handleSourceRateChange("source_2", Number(e.target.value))}
                   className="w-full bg-transparent border-none text-[12px] font-extrabold text-white focus:ring-0 focus:outline-hidden p-0 font-mono"
-                  placeholder="500"
+                  placeholder="220"
                 />
               </div>
             </div>
